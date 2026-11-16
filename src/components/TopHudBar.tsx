@@ -9,12 +9,14 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { ResourceMeters } from '../types/game';
+import { AmbientTheme, ResourceMeters } from '../types/game';
+import { AMBIENT_THEME_LABELS } from '../utils/audio';
 
 interface TopHudBarProps {
   chapterNumber: number;
   locationLabel: string;
   dateLabel: string;
+  ambientTheme: AmbientTheme;
   meters: ResourceMeters;
   muted: boolean;
   onToggleMute: () => void;
@@ -51,6 +53,7 @@ export const TopHudBar: React.FC<TopHudBarProps> = ({
   chapterNumber,
   locationLabel,
   dateLabel,
+  ambientTheme,
   meters,
   muted,
   onToggleMute,
@@ -123,11 +126,21 @@ export const TopHudBar: React.FC<TopHudBarProps> = ({
         <button
           type="button"
           onClick={onToggleMute}
-          aria-label={muted ? 'Unmute audio' : 'Mute audio'}
-          title={muted ? 'Unmute audio (M)' : 'Mute audio (M)'}
-          className="inline-flex items-center justify-center p-2 text-[#EDE3CE] hover:text-[#F6EBD4] bg-[#181F29] hover:bg-[#222B38] border border-[#E2D5B9]/15 rounded transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D99B38] cursor-pointer"
+          aria-label={muted ? 'Unmute ambient audio' : `Mute ambient audio (${AMBIENT_THEME_LABELS[ambientTheme]})`}
+          title={muted ? 'Unmute audio (M)' : `Ambient: ${AMBIENT_THEME_LABELS[ambientTheme]} · Press M to mute`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#EDE3CE] hover:text-[#F6EBD4] bg-[#181F29] hover:bg-[#222B38] border border-[#E2D5B9]/15 rounded transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D99B38] whitespace-nowrap shrink-0 cursor-pointer"
         >
-          {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-[#D99B38]" />}
+          {muted ? (
+            <>
+              <VolumeX className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Muted</span>
+            </>
+          ) : (
+            <>
+              <Volume2 className="w-3.5 h-3.5 text-[#D99B38]" aria-hidden="true" />
+              <span>{AMBIENT_THEME_LABELS[ambientTheme]}</span>
+            </>
+          )}
         </button>
 
         <button

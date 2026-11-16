@@ -135,6 +135,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'Saturday Night, November 11, 1854',
     title: 'The Signal at the Edge of the Quarter',
     imageKey: 'lantern',
+    ambientTheme: 'forest_night',
     narrative: () => [
       'A frost settles hard over the Dorchester timberline. Saturday night was chosen deliberately—no runaway broadside can be printed until Monday morning. Two hours past curfew, your brother passes word from a free Black waterman: a conductor known as "Moses" has returned from the North and waits near the Choptank reeds before moonrise.',
       'Inside the cabin, your elderly Aunt Martha presses a wool shawl into your hands, knowing her joints cannot survive a winter march. Beside the hearth, your younger sister Clara—limping slightly from a sprained ankle—refuses to stay behind after hearing the master intends to sell her south to New Orleans after harvest.',
@@ -221,6 +222,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 12, 1854 · 1:40 AM',
     title: 'Harriet Tubman in the Reeds',
     imageKey: 'marsh',
+    ambientTheme: 'swamp_night',
     npcEncounter: {
       npcId: 'harriet_tubman',
       greeting:
@@ -328,6 +330,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 15, 1854',
     title: 'A Stranger in the Pines',
     imageKey: 'lantern',
+    ambientTheme: 'forest_night',
     narrative: (inv) => [
       'After two nights following Polaris across the state line into Kent County, Delaware, your party shelters inside a hollow sycamore windbreak. Delaware remains a slave state, though pockets of free Black settlements and Quaker farms thread northward toward Wilmington.',
       'At dusk, a slender man in his twenties stumbles into the thicket, calling softly in the dark. He introduces himself as Amos from Smyrna. Yet something gives you pause: his boots are remarkably dry for someone claiming three days in the swamps, and he presses eagerly to know the exact name of the Quaker farmhouse ahead.',
@@ -419,6 +422,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 17, 1854',
     title: 'Thomas Garrett’s Workshop',
     imageKey: 'philadelphia',
+    ambientTheme: 'town_study',
     npcEncounter: {
       npcId: 'thomas_garrett',
       greeting:
@@ -524,6 +528,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 19, 1854',
     title: 'The Fugitive Slave Act of 1850',
     imageKey: 'marsh',
+    ambientTheme: 'train_frontier',
     narrative: (inv, meters) => [
       'You have crossed the Mason-Dixon Line into Pennsylvania—yet freedom remains a fragile illusion. Under the federal Fugitive Slave Act of 1850, U.S. commissioners receive ten dollars for ruling a suspect enslaved, and only five dollars for declaring them free. Bystanders face fines and prison for refusing to join a marshal’s posse.',
       meters.cumulativeRisk >= 45
@@ -627,6 +632,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 21, 1854',
     title: 'William Still’s Ledger',
     imageKey: 'philadelphia',
+    ambientTheme: 'town_study',
     npcEncounter: {
       npcId: 'william_still',
       greeting:
@@ -735,6 +741,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 24, 1854',
     title: 'Crate, Steamer, or Sleet',
     imageKey: 'marsh',
+    ambientTheme: 'swamp_night',
     narrative: (inv, meters) => [
       'Word reaches the New York Vigilance Committee that slave catchers armed with fresh federal warrants are watching Manhattan docks and railroad depots. Moving openly along the Hudson River grows perilous by the hour.',
       meters.cumulativeRisk >= 55
@@ -842,6 +849,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 27, 1854 · Midnight',
     title: 'Rev. Jermain Loguen & The Canal Trap',
     imageKey: 'lantern',
+    ambientTheme: 'town_study',
     npcEncounter: {
       npcId: 'jermain_loguen',
       greeting:
@@ -958,6 +966,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'November 29, 1854',
     title: 'Frederick Douglass on the Genesee',
     imageKey: 'philadelphia',
+    ambientTheme: 'train_frontier',
     npcEncounter: {
       npcId: 'frederick_douglass',
       greeting:
@@ -1092,6 +1101,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'December 1, 1854 · 4:15 AM',
     title: 'Feet from British Soil',
     imageKey: 'niagara',
+    ambientTheme: 'niagara_falls',
     npcEncounter: {
       npcId: 'harriet_tubman',
       greeting:
@@ -1238,6 +1248,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'December 1854',
     title: 'Sanctuary Beneath the North Star',
     imageKey: 'niagara',
+    ambientTheme: 'sanctuary_dawn',
     isEnding: true,
     endingType: 'FREEDOM_SOLIDARITY',
     narrative: (inv) => [
@@ -1269,6 +1280,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'December 1854',
     title: 'A Quiet Dawn Across the Gorge',
     imageKey: 'niagara',
+    ambientTheme: 'sanctuary_dawn',
     isEnding: true,
     endingType: 'FREEDOM_SOLITARY',
     narrative: (inv) => [
@@ -1298,6 +1310,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'December 1854',
     title: 'The Vigilance Rescue',
     imageKey: 'lantern',
+    ambientTheme: 'sanctuary_dawn',
     isEnding: true,
     endingType: 'VIGILANCE_RESCUE',
     narrative: () => [
@@ -1323,6 +1336,7 @@ export const STORY_NODES: Record<string, StoryNode> = {
     dateLabel: 'December 1854',
     title: 'Intercepted Under the 1850 Act',
     imageKey: 'philadelphia',
+    ambientTheme: 'town_study',
     isEnding: true,
     endingType: 'INTERCEPTED',
     narrative: () => [

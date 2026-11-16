@@ -130,6 +130,14 @@ export interface HistoricalNote {
   sourceAttribution: string;
 }
 
+export type AmbientTheme =
+  | 'forest_night'
+  | 'swamp_night'
+  | 'town_study'
+  | 'train_frontier'
+  | 'niagara_falls'
+  | 'sanctuary_dawn';
+
 export interface StoryNode {
   id: string;
   chapterNumber: number;
@@ -138,6 +146,7 @@ export interface StoryNode {
   dateLabel: string;
   title: string;
   imageKey: 'marsh' | 'philadelphia' | 'niagara' | 'lantern';
+  ambientTheme: AmbientTheme;
   npcEncounter?: NpcEncounterData;
   narrative: (inventory: PlayerInventory, meters: ResourceMeters) => string[];
   dilemmaPrompt: string;
@@ -169,3 +178,34 @@ export interface MapStation {
   y: number;
   historicalRole: string;
 }
+
+export type AchievementId =
+  | 'sister_keeper'
+  | 'moses_discipline'
+  | 'helped_amos'
+  | 'still_ledger'
+  | 'syracuse_rescue'
+  | 'trusted_coalition'
+  | 'calculated_navigator'
+  | 'successfully_escaped';
+
+export interface AchievementContext {
+  currentNode: StoryNode;
+  meters: ResourceMeters;
+  inventory: PlayerInventory;
+}
+
+export interface AchievementDefinition {
+  id: AchievementId;
+  title: string;
+  category: string;
+  description: string;
+  criteriaHint: string;
+  checkUnlocked: (ctx: AchievementContext) => boolean;
+}
+
+export interface UnlockedAchievement {
+  id: AchievementId;
+  unlockedAt: string;
+}
+

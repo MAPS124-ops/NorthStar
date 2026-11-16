@@ -6,10 +6,12 @@ import {
   PlayerInventory,
   ResourceMeters,
   StationId,
+  UnlockedAchievement,
 } from '../types/game';
 
 const SAVE_STORAGE_KEY = 'following_north_star_save_v1';
 const MUTE_STORAGE_KEY = 'following_north_star_muted_v1';
+const ACHIEVEMENTS_STORAGE_KEY = 'following_north_star_achievements_v1';
 
 export interface SavedGameData {
   version: 1;
@@ -87,3 +89,25 @@ export function saveMutedPreference(muted: boolean): void {
     // Ignore storage access errors
   }
 }
+
+export function loadUnlockedAchievements(): UnlockedAchievement[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(ACHIEVEMENTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveUnlockedAchievements(items: UnlockedAchievement[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ACHIEVEMENTS_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Ignore storage access errors
+  }
+}
+

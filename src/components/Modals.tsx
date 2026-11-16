@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { BookOpen, RotateCcw, ShieldCheck, Undo2, X } from 'lucide-react';
+import { Award, BookOpen, Lock, RotateCcw, ShieldCheck, Undo2, X } from 'lucide-react';
+import { ACHIEVEMENTS } from '../data/achievements';
 import { NPC_PROFILES } from '../data/npcs';
 import { SCENE_IMAGES, STORY_NODES } from '../data/storyNodes';
 import {
@@ -8,6 +9,7 @@ import {
   PlayerInventory,
   ResourceMeters,
   StoryNode,
+  UnlockedAchievement,
 } from '../types/game';
 
 interface PauseModalProps {
@@ -44,7 +46,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
         </div>
 
         <p className="text-sm text-[#C4B79C] leading-relaxed">
-          Your route progress, survival meters, and historical ledger remain preserved while paused.
+          Your route progress, survival meters, and Field Ledger remain saved automatically.
         </p>
 
         <div className="rounded-md bg-[#0D1117] border border-[#E2D5B9]/10 p-3.5 text-xs text-[#C4B79C] space-y-1.5 font-mono-tabular">
@@ -102,6 +104,8 @@ interface FieldLedgerModalProps {
   chronicle: ChronicleEntry[];
   metNpcs: NpcId[];
   trustedAllies: NpcId[];
+  unlockedAchievements: UnlockedAchievement[];
+  initialTab?: 'chronicle' | 'figures' | 'achievements';
   onClose: () => void;
 }
 
@@ -109,9 +113,11 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
   chronicle,
   metNpcs,
   trustedAllies,
+  unlockedAchievements,
+  initialTab = 'chronicle',
   onClose,
 }) => {
-  const [tab, setTab] = useState<'chronicle' | 'figures'>('chronicle');
+  const [tab, setTab] = useState<'chronicle' | 'figures' | 'achievements'>(initialTab);
   const allNpcIds: NpcId[] = [
     'harriet_tubman',
     'thomas_garrett',
@@ -119,6 +125,8 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
     'jermain_loguen',
     'frederick_douglass',
   ];
+
+  const unlockedMap = new Map(unlockedAchievements.map((u) => [u.id, u.unlockedAt]));
 
   return (
     <div
@@ -133,7 +141,7 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
           <div className="flex items-center gap-2.5">
             <BookOpen className="w-5 h-5 text-[#D99B38]" aria-hidden="true" />
             <h2 id="ledger-title" className="font-display text-xl font-semibold text-[#F6EBD4]">
-              Field Ledger &amp; Historical Profiles
+              Field Ledger &amp; Milestones
             </h2>
           </div>
           <button
@@ -147,11 +155,11 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
         </div>
 
         {/* Segmented Control Tabs */}
-        <div className="px-6 pt-3 pb-2 border-b border-[#E2D5B9]/10 flex items-center gap-2">
+        <div className="px-6 pt-3 pb-2 border-b border-[#E2D5B9]/10 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setTab('chronicle')}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               tab === 'chronicle'
                 ? 'bg-[#D99B38] text-[#0D1117] font-semibold'
                 : 'bg-[#181F29] text-[#C4B79C] hover:text-[#F6EBD4]'
@@ -162,7 +170,7 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
           <button
             type="button"
             onClick={() => setTab('figures')}
-            className={`px-3.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap ${
+            className={`px-3.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               tab === 'figures'
                 ? 'bg-[#D99B38] text-[#0D1117] font-semibold'
                 : 'bg-[#181F29] text-[#C4B79C] hover:text-[#F6EBD4]'
@@ -170,11 +178,22 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
           >
             Historical Figures ({metNpcs.length}/{allNpcIds.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setTab('achievements')}
+            className={`px-3.5 py-1.5 text-xs font-medium rounded transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+              tab === 'achievements'
+                ? 'bg-[#D99B38] text-[#0D1117] font-semibold'
+                : 'bg-[#181F29] text-[#C4B79C] hover:text-[#F6EBD4]'
+            }`}
+          >
+            Achievements ({unlockedAchievements.length}/{ACHIEVEMENTS.length})
+          </button>
         </div>
 
         {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto ledger-scroll space-y-5 flex-1">
-          {tab === 'chronicle' ? (
+          {tab === 'chronicle' && (
             chronicle.length === 0 ? (
               <p className="text-sm text-[#A99C82]">
                 No decisions recorded yet. Your choices, risk tallies, and historical outcomes will appear here as you travel north.
@@ -204,7 +223,9 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
                 ))}
               </div>
             )
-          ) : (
+          )}
+
+          {tab === 'figures' && (
             <div className="space-y-4">
               {allNpcIds.map((npcId) => {
                 const profile = NPC_PROFILES[npcId];
@@ -249,6 +270,72 @@ export const FieldLedgerModal: React.FC<FieldLedgerModalProps> = ({
               })}
             </div>
           )}
+
+          {tab === 'achievements' && (
+            <div className="space-y-3">
+              <p className="text-xs text-[#A99C82]">
+                Milestones persist across journeys on this browser to recognize historical outcomes and moral choices.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ACHIEVEMENTS.map((ach) => {
+                  const unlockedAt = unlockedMap.get(ach.id);
+                  const isUnlocked = Boolean(unlockedAt);
+
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`rounded-md border p-4 space-y-2 transition-colors ${
+                        isUnlocked
+                          ? 'bg-[#151D27] border-[#D99B38]/40'
+                          : 'bg-[#0E131B]/75 border-[#E2D5B9]/10 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${
+                              isUnlocked
+                                ? 'bg-[#D99B38]/15 border-[#D99B38]/60 text-[#D99B38]'
+                                : 'bg-[#0D1117] border-[#E2D5B9]/15 text-[#64748B]'
+                            }`}
+                            aria-hidden="true"
+                          >
+                            {isUnlocked ? (
+                              <Award className="w-4 h-4" />
+                            ) : (
+                              <Lock className="w-3.5 h-3.5" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold text-[#F6EBD4] leading-snug">
+                              {ach.title}
+                            </div>
+                            <div className="text-[11px] font-mono-tabular text-[#A99C82]">
+                              {ach.category}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-[#D5C9B1] leading-relaxed">
+                        {isUnlocked ? ach.description : ach.criteriaHint}
+                      </p>
+
+                      <div className="text-[11px] font-mono-tabular pt-0.5">
+                        {isUnlocked ? (
+                          <span className="text-[#73B58E]">
+                            UNLOCKED · {new Date(unlockedAt as string).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span className="text-[#7D899B]">LOCKED</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -260,8 +347,10 @@ interface EndingScreenProps {
   meters: ResourceMeters;
   inventory: PlayerInventory;
   chronicle: ChronicleEntry[];
+  unlockedAchievements: UnlockedAchievement[];
   canRevisitLast: boolean;
   onRevisitLast: () => void;
+  onOpenAchievements: () => void;
   onPlayAgain: () => void;
 }
 
@@ -270,8 +359,10 @@ export const EndingScreen: React.FC<EndingScreenProps> = ({
   meters,
   inventory,
   chronicle,
+  unlockedAchievements,
   canRevisitLast,
   onRevisitLast,
+  onOpenAchievements,
   onPlayAgain,
 }) => {
   const [showChronicle, setShowChronicle] = useState(false);
@@ -336,7 +427,7 @@ export const EndingScreen: React.FC<EndingScreenProps> = ({
           </div>
 
           {/* Risk vs. Reward & Moral Ledger Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-y border-[#E2D5B9]/12 py-4 font-mono-tabular text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 border-y border-[#E2D5B9]/12 py-4 font-mono-tabular text-xs">
             <div>
               <div className="text-[#A99C82]">Final Resolve</div>
               <div className="text-lg font-semibold text-[#F6EBD4] mt-0.5">{meters.resolve}</div>
@@ -357,6 +448,12 @@ export const EndingScreen: React.FC<EndingScreenProps> = ({
                 }`}
               >
                 {meters.cumulativeRisk}
+              </div>
+            </div>
+            <div>
+              <div className="text-[#A99C82]">Achievements</div>
+              <div className="text-lg font-semibold text-[#73B58E] mt-0.5">
+                {unlockedAchievements.length}/{ACHIEVEMENTS.length}
               </div>
             </div>
           </div>
@@ -436,6 +533,15 @@ export const EndingScreen: React.FC<EndingScreenProps> = ({
                   <span>Revisit Last Crossroads</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={onOpenAchievements}
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-[#181F29] hover:bg-[#222B38] text-[#EDE3CE] border border-[#E2D5B9]/15 rounded-md transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D99B38] whitespace-nowrap shrink-0"
+              >
+                <Award className="w-4 h-4 text-[#D99B38]" aria-hidden="true" />
+                <span>View Achievements</span>
+              </button>
             </div>
 
             <button

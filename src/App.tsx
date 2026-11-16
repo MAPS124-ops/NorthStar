@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Award, X } from 'lucide-react';
 import { FieldLedgerModal, EndingScreen, PauseModal } from './components/Modals';
 import { NarrativePanel } from './components/NarrativePanel';
 import { RouteMap } from './components/RouteMap';
 import { TitleScreen } from './components/TitleScreen';
 import { TopHudBar } from './components/TopHudBar';
+import { ACHIEVEMENTS } from './data/achievements';
 import {
   INITIAL_INVENTORY,
   INITIAL_METERS,
   STORY_NODES,
 } from './data/storyNodes';
 import {
+  AchievementDefinition,
   ChoiceEffects,
   ChronicleEntry,
   GameScreenState,
@@ -19,15 +22,19 @@ import {
   ResourceMeters,
   StationId,
   StoryChoice,
+  StoryNode,
+  UnlockedAchievement,
 } from './types/game';
 import { audioEngine } from './utils/audio';
 import {
   clearSavedGame,
   loadMutedPreference,
   loadSavedGame,
+  loadUnlockedAchievements,
   SavedGameData,
   saveGameProgress,
   saveMutedPreference,
+  saveUnlockedAchievements,
 } from './utils/storage';
 
 function clampMeter(value: number): number {
@@ -36,6 +43,11 @@ function clampMeter(value: number): number {
 
 export default function App() {
   const [savedGame, setSavedGame] = useState<SavedGameData | null>(() => loadSavedGame());
+  const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievement[]>(() =>
+    loadUnlockedAchievements()
+  );
+  const [achievementToast, setAchievementToast] = useState<AchievementDefinition | null>(null);
+
   const [screen, setScreen] = useState<GameScreenState>('TITLE_MENU');
   const [currentNodeId, setCurrentNodeId] = useState<string>('dorchester_departure');
   const [meters, setMeters] = useState<ResourceMeters>(INITIAL_METERS);
@@ -48,7 +60,7 @@ export default function App() {
   const [historyStack, setHistoryStack] = useState<GameSnapshot[]>([]);
 
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
-  const [showLedgerModal, setShowLedgerModal] = useState<boolean>(false);
+  const [ledgerTab, setLedgerTab] = useState<'chronicle' | 'figures' | 'achievements' | null>(null);
   const [muted, setMuted] = useState<boolean>(() => {
     const initialMuted = loadMutedPreference();
     audioEngine.setMuted(initialMuted);
@@ -56,6 +68,65 @@ export default function App() {
   });
 
   const currentNode = STORY_NODES[currentNodeId] || STORY_NODES.dorchester_departure;
+
+  const evaluateAchievements = useCallback(
+    (targetNode: StoryNode, targetMeters: ResourceMeters, targetInventory: PlayerInventory) => {
+      setUnlockedAchievements((prev) => {
+        const existingIds = new Set(prev.map((a) => a.id));
+        const newlyUnlocked: AchievementDefinition[] = [];
+        const now = new Date().toISOString();
+
+        for (const def of ACHIEVEMENTS) {
+          if (
+            !existingIds.has(def.id) &&
+            def.checkUnlocked({
+              currentNode: targetNode,
+              meters: targetMeters,
+              inventory: targetInventory,
+            })
+          ) {
+            newlyUnlocked.push(def);
+          }
+        }
+
+        if (newlyUnlocked.length === 0) return prev;
+
+        const updated = [
+          ...prev,
+          ...newlyUnlocked.map((def) => ({ id: def.id, unlockedAt: now })),
+        ];
+        saveUnlockedAchievements(updated);
+        setAchievementToast(newlyUnlocked[0]);
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Auto-dismiss milestone toast after 4.5 seconds
+  useEffect(() => {
+    if (!achievementToast) return;
+    const timer = window.setTimeout(() => {
+      setAchievementToast(null);
+    }, 4500);
+    return () => window.clearTimeout(timer);
+  }, [achievementToast]);
+
+  // Dynamically switch background ambient soundscape based on node theme
+  useEffect(() => {
+    if (screen === 'TITLE_MENU') {
+      audioEngine.setAmbientTheme(null);
+      return;
+    }
+    audioEngine.setAmbientTheme(currentNode.ambientTheme);
+  }, [screen, currentNode.ambientTheme]);
+
+  // Stop ambient soundscape cleanly on unmount
+  useEffect(() => {
+    return () => {
+      audioEngine.stopAmbient();
+    };
+  }, []);
 
   // Automatically persist progress whenever playing or viewing an ending
   useEffect(() => {
@@ -107,7 +178,9 @@ export default function App() {
     setLastOutcome(null);
     setHistoryStack([]);
     setShowHistoryDrawer(false);
-    setShowLedgerModal(false);
+    setLedgerTab(null);
+    setAchievementToast(null);
+    audioEngine.unlockAndPlay(STORY_NODES.dorchester_departure.ambientTheme);
     audioEngine.playSanctuaryChime();
     setScreen('PLAYING');
   }, []);
@@ -129,14 +202,16 @@ export default function App() {
     setLastOutcome(data.lastOutcome);
     setHistoryStack(data.historyStack || []);
     setShowHistoryDrawer(false);
-    setShowLedgerModal(false);
+    setLedgerTab(null);
+    audioEngine.unlockAndPlay(targetNode.ambientTheme);
     audioEngine.playSelect();
     setScreen(targetNode.isEnding ? 'GAME_OVER' : 'PLAYING');
   }, [savedGame, startFreshJourney]);
 
   const handleReturnToTitle = useCallback(() => {
-    setShowLedgerModal(false);
+    setLedgerTab(null);
     setShowHistoryDrawer(false);
+    audioEngine.setAmbientTheme(null);
     setScreen('TITLE_MENU');
   }, []);
 
@@ -145,9 +220,12 @@ export default function App() {
       const next = !prev;
       audioEngine.setMuted(next);
       saveMutedPreference(next);
+      if (!next && screen !== 'TITLE_MENU') {
+        audioEngine.unlockAndPlay(currentNode.ambientTheme);
+      }
       return next;
     });
-  }, []);
+  }, [screen, currentNode.ambientTheme]);
 
   const handleSeekCounsel = useCallback(() => {
     if (!currentNode.npcEncounter || counseledNodes.includes(currentNode.id)) return;
@@ -254,6 +332,8 @@ export default function App() {
         prev.includes(nextNode.stationId) ? prev : [...prev, nextNode.stationId]
       );
 
+      evaluateAchievements(nextNode, nextMeters, nextInventory);
+
       if (nextNode.isEnding) {
         if (nextNode.endingType === 'INTERCEPTED') {
           audioEngine.playDangerPulse();
@@ -273,7 +353,17 @@ export default function App() {
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [currentNode, currentNodeId, meters, inventory, visitedStations, chronicle, metNpcs, counseledNodes]
+    [
+      currentNode,
+      currentNodeId,
+      meters,
+      inventory,
+      visitedStations,
+      chronicle,
+      metNpcs,
+      counseledNodes,
+      evaluateAchievements,
+    ]
   );
 
   const handleRevisitLast = useCallback(() => {
@@ -301,15 +391,15 @@ export default function App() {
 
       if (e.key === 'Escape') {
         e.preventDefault();
-        if (showLedgerModal) {
-          setShowLedgerModal(false);
+        if (ledgerTab) {
+          setLedgerTab(null);
         } else {
           setScreen((prev) => (prev === 'PLAYING' ? 'PAUSED' : 'PLAYING'));
         }
         return;
       }
 
-      if (screen !== 'PLAYING' || showLedgerModal) return;
+      if (screen !== 'PLAYING' || ledgerTab) return;
 
       const lower = e.key.toLowerCase();
       if (lower === 'h') {
@@ -346,7 +436,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     screen,
-    showLedgerModal,
+    ledgerTab,
     currentNode,
     inventory,
     meters,
@@ -354,6 +444,35 @@ export default function App() {
     handleSeekCounsel,
     handleToggleMute,
   ]);
+
+  const toastBanner = achievementToast && (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed bottom-5 right-5 z-40 max-w-sm rounded-md bg-[#151D27] border border-[#D99B38]/60 px-4 py-3 shadow-2xl flex items-start gap-3 animate-panel-enter"
+    >
+      <Award className="w-5 h-5 text-[#D99B38] shrink-0 mt-0.5" aria-hidden="true" />
+      <div className="space-y-0.5 flex-1">
+        <div className="text-[11px] font-mono-tabular font-semibold text-[#D99B38]">
+          Milestone Unlocked · {achievementToast.category}
+        </div>
+        <div className="text-sm font-semibold text-[#F6EBD4]">
+          {achievementToast.title}
+        </div>
+        <div className="text-xs text-[#C4B79C]">
+          Recorded in your Field Ledger.
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setAchievementToast(null)}
+        aria-label="Dismiss milestone notification"
+        className="text-[#A99C82] hover:text-[#F6EBD4] p-0.5 rounded cursor-pointer"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
 
   if (screen === 'TITLE_MENU') {
     return (
@@ -369,15 +488,30 @@ export default function App() {
 
   if (screen === 'GAME_OVER') {
     return (
-      <EndingScreen
-        endingNode={currentNode}
-        meters={meters}
-        inventory={inventory}
-        chronicle={chronicle}
-        canRevisitLast={historyStack.length > 0}
-        onRevisitLast={handleRevisitLast}
-        onPlayAgain={startFreshJourney}
-      />
+      <>
+        <EndingScreen
+          endingNode={currentNode}
+          meters={meters}
+          inventory={inventory}
+          chronicle={chronicle}
+          unlockedAchievements={unlockedAchievements}
+          canRevisitLast={historyStack.length > 0}
+          onRevisitLast={handleRevisitLast}
+          onOpenAchievements={() => setLedgerTab('achievements')}
+          onPlayAgain={startFreshJourney}
+        />
+        {ledgerTab && (
+          <FieldLedgerModal
+            chronicle={chronicle}
+            metNpcs={metNpcs}
+            trustedAllies={inventory.trustedAllies}
+            unlockedAchievements={unlockedAchievements}
+            initialTab={ledgerTab}
+            onClose={() => setLedgerTab(null)}
+          />
+        )}
+        {toastBanner}
+      </>
     );
   }
 
@@ -387,10 +521,11 @@ export default function App() {
         chapterNumber={currentNode.chapterNumber}
         locationLabel={currentNode.locationLabel}
         dateLabel={currentNode.dateLabel}
+        ambientTheme={currentNode.ambientTheme}
         meters={meters}
         muted={muted}
         onToggleMute={handleToggleMute}
-        onOpenArchive={() => setShowLedgerModal(true)}
+        onOpenArchive={() => setLedgerTab('chronicle')}
         onPause={() => setScreen('PAUSED')}
       />
 
@@ -426,14 +561,18 @@ export default function App() {
         />
       )}
 
-      {showLedgerModal && (
+      {ledgerTab && (
         <FieldLedgerModal
           chronicle={chronicle}
           metNpcs={metNpcs}
           trustedAllies={inventory.trustedAllies}
-          onClose={() => setShowLedgerModal(false)}
+          unlockedAchievements={unlockedAchievements}
+          initialTab={ledgerTab}
+          onClose={() => setLedgerTab(null)}
         />
       )}
+
+      {toastBanner}
     </div>
   );
 }
