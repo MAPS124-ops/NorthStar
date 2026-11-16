@@ -1,15 +1,20 @@
 import React, { useEffect } from 'react';
-import { Volume2, VolumeX } from 'lucide-react';
-import { SCENE_IMAGES } from '../data/storyNodes';
+import { RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { SCENE_IMAGES, STORY_NODES } from '../data/storyNodes';
+import { SavedGameData } from '../utils/storage';
 
 interface TitleScreenProps {
-  onStart: () => void;
+  savedGame: SavedGameData | null;
+  onContinue: () => void;
+  onStartNew: () => void;
   muted: boolean;
   onToggleMute: () => void;
 }
 
 export const TitleScreen: React.FC<TitleScreenProps> = ({
-  onStart,
+  savedGame,
+  onContinue,
+  onStartNew,
   muted,
   onToggleMute,
 }) => {
@@ -17,12 +22,18 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        onStart();
+        if (savedGame) {
+          onContinue();
+        } else {
+          onStartNew();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onStart]);
+  }, [savedGame, onContinue, onStartNew]);
+
+  const savedNode = savedGame ? STORY_NODES[savedGame.currentNodeId] : null;
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#0D1117] text-[#EDE3CE] flex flex-col justify-between">
@@ -108,18 +119,46 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             </p>
           </div>
 
-          <div className="pt-2 flex flex-wrap items-center gap-5">
-            <button
-              type="button"
-              onClick={onStart}
-              className="px-7 py-3.5 text-base font-semibold bg-[#D99B38] hover:bg-[#E4AA4C] active:translate-y-px text-[#0D1117] rounded-md transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6EBD4] whitespace-nowrap shrink-0 cursor-pointer shadow-lg shadow-black/40"
-            >
-              Begin Journey
-            </button>
-            <span className="text-sm text-[#A99C82]">
-              10 historical stations · 4 endings
-            </span>
-          </div>
+          {savedGame && savedNode ? (
+            <div className="pt-2 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onContinue}
+                  className="px-7 py-3.5 text-base font-semibold bg-[#D99B38] hover:bg-[#E4AA4C] active:translate-y-px text-[#0D1117] rounded-md transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6EBD4] whitespace-nowrap shrink-0 cursor-pointer shadow-lg shadow-black/40"
+                >
+                  {savedGame.isEnding ? 'Review Saved Ending' : 'Continue Saved Journey'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onStartNew}
+                  className="inline-flex items-center gap-2 px-5 py-3.5 text-sm font-medium bg-[#161C25]/90 hover:bg-[#1E2733] text-[#EDE3CE] border border-[#E2D5B9]/20 rounded-md transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D99B38] whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-[#D99B38]" aria-hidden="true" />
+                  <span>Start New Journey</span>
+                </button>
+              </div>
+              <div className="text-xs font-mono-tabular text-[#C4B79C]">
+                Saved Progress ·{' '}
+                {savedGame.isEnding
+                  ? `${savedNode.title} (${savedNode.locationLabel})`
+                  : `Chapter ${savedNode.chapterNumber} of 10 · ${savedNode.locationLabel}`}
+              </div>
+            </div>
+          ) : (
+            <div className="pt-2 flex flex-wrap items-center gap-5">
+              <button
+                type="button"
+                onClick={onStartNew}
+                className="px-7 py-3.5 text-base font-semibold bg-[#D99B38] hover:bg-[#E4AA4C] active:translate-y-px text-[#0D1117] rounded-md transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6EBD4] whitespace-nowrap shrink-0 cursor-pointer shadow-lg shadow-black/40"
+              >
+                Begin Journey
+              </button>
+              <span className="text-sm text-[#A99C82]">
+                10 historical stations · 4 endings · Progress auto-saved
+              </span>
+            </div>
+          )}
         </div>
       </section>
 

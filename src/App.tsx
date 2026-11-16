@@ -21,12 +21,21 @@ import {
   StoryChoice,
 } from './types/game';
 import { audioEngine } from './utils/audio';
+import {
+  clearSavedGame,
+  loadMutedPreference,
+  loadSavedGame,
+  SavedGameData,
+  saveGameProgress,
+  saveMutedPreference,
+} from './utils/storage';
 
 function clampMeter(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
 export default function App() {
+  const [savedGame, setSavedGame] = useState<SavedGameData | null>(() => loadSavedGame());
   const [screen, setScreen] = useState<GameScreenState>('TITLE_MENU');
   const [currentNodeId, setCurrentNodeId] = useState<string>('dorchester_departure');
   const [meters, setMeters] = useState<ResourceMeters>(INITIAL_METERS);
@@ -40,11 +49,54 @@ export default function App() {
 
   const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
   const [showLedgerModal, setShowLedgerModal] = useState<boolean>(false);
-  const [muted, setMuted] = useState<boolean>(false);
+  const [muted, setMuted] = useState<boolean>(() => {
+    const initialMuted = loadMutedPreference();
+    audioEngine.setMuted(initialMuted);
+    return initialMuted;
+  });
 
   const currentNode = STORY_NODES[currentNodeId] || STORY_NODES.dorchester_departure;
 
-  const resetGame = useCallback((targetScreen: GameScreenState = 'PLAYING') => {
+  // Automatically persist progress whenever playing or viewing an ending
+  useEffect(() => {
+    if (screen === 'TITLE_MENU') return;
+
+    const payload = {
+      isEnding: Boolean(currentNode.isEnding),
+      currentNodeId,
+      meters,
+      inventory,
+      visitedStations,
+      chronicle,
+      metNpcs,
+      counseledNodes,
+      lastOutcome,
+      historyStack,
+    };
+
+    saveGameProgress(payload);
+    setSavedGame({
+      ...payload,
+      version: 1,
+      savedAt: new Date().toISOString(),
+    });
+  }, [
+    screen,
+    currentNode.isEnding,
+    currentNodeId,
+    meters,
+    inventory,
+    visitedStations,
+    chronicle,
+    metNpcs,
+    counseledNodes,
+    lastOutcome,
+    historyStack,
+  ]);
+
+  const startFreshJourney = useCallback(() => {
+    clearSavedGame();
+    setSavedGame(null);
     setCurrentNodeId('dorchester_departure');
     setMeters(INITIAL_METERS);
     setInventory(INITIAL_INVENTORY);
@@ -56,18 +108,43 @@ export default function App() {
     setHistoryStack([]);
     setShowHistoryDrawer(false);
     setShowLedgerModal(false);
-    setScreen(targetScreen);
+    audioEngine.playSanctuaryChime();
+    setScreen('PLAYING');
   }, []);
 
-  const handleStart = useCallback(() => {
-    audioEngine.playSanctuaryChime();
-    resetGame('PLAYING');
-  }, [resetGame]);
+  const continueSavedJourney = useCallback(() => {
+    const data = loadSavedGame() ?? savedGame;
+    if (!data) {
+      startFreshJourney();
+      return;
+    }
+    const targetNode = STORY_NODES[data.currentNodeId] || STORY_NODES.dorchester_departure;
+    setCurrentNodeId(targetNode.id);
+    setMeters(data.meters);
+    setInventory(data.inventory);
+    setVisitedStations(data.visitedStations);
+    setChronicle(data.chronicle);
+    setMetNpcs(data.metNpcs);
+    setCounseledNodes(data.counseledNodes);
+    setLastOutcome(data.lastOutcome);
+    setHistoryStack(data.historyStack || []);
+    setShowHistoryDrawer(false);
+    setShowLedgerModal(false);
+    audioEngine.playSelect();
+    setScreen(targetNode.isEnding ? 'GAME_OVER' : 'PLAYING');
+  }, [savedGame, startFreshJourney]);
+
+  const handleReturnToTitle = useCallback(() => {
+    setShowLedgerModal(false);
+    setShowHistoryDrawer(false);
+    setScreen('TITLE_MENU');
+  }, []);
 
   const handleToggleMute = useCallback(() => {
     setMuted((prev) => {
       const next = !prev;
       audioEngine.setMuted(next);
+      saveMutedPreference(next);
       return next;
     });
   }, []);
@@ -93,7 +170,6 @@ export default function App() {
 
   const handleSelectChoice = useCallback(
     (choice: StoryChoice) => {
-      // Save snapshot so player can revisit the last crossroads if desired
       const snapshot: GameSnapshot = {
         currentNodeId,
         meters,
@@ -132,7 +208,6 @@ export default function App() {
         saferRoutesUnlocked: nextRoutes,
       };
 
-      // Check failure conditions from Resolve=0 or CumulativeRisk=100 / Stealth=0
       let finalNextNodeId = rawNextId;
       const candidateNode = STORY_NODES[rawNextId];
 
@@ -145,7 +220,6 @@ export default function App() {
 
       const nextNode = STORY_NODES[finalNextNodeId] || STORY_NODES.ending_intercepted;
 
-      // Record NPC met on current node if any
       let updatedMetNpcs = metNpcs;
       if (currentNode.npcEncounter && !updatedMetNpcs.includes(currentNode.npcEncounter.npcId)) {
         updatedMetNpcs = [...updatedMetNpcs, currentNode.npcEncounter.npcId];
@@ -284,7 +358,9 @@ export default function App() {
   if (screen === 'TITLE_MENU') {
     return (
       <TitleScreen
-        onStart={handleStart}
+        savedGame={savedGame}
+        onContinue={continueSavedJourney}
+        onStartNew={startFreshJourney}
         muted={muted}
         onToggleMute={handleToggleMute}
       />
@@ -300,7 +376,7 @@ export default function App() {
         chronicle={chronicle}
         canRevisitLast={historyStack.length > 0}
         onRevisitLast={handleRevisitLast}
-        onPlayAgain={() => resetGame('PLAYING')}
+        onPlayAgain={startFreshJourney}
       />
     );
   }
@@ -345,8 +421,8 @@ export default function App() {
       {screen === 'PAUSED' && (
         <PauseModal
           onResume={() => setScreen('PLAYING')}
-          onRestart={() => resetGame('PLAYING')}
-          onReturnTitle={() => resetGame('TITLE_MENU')}
+          onRestart={startFreshJourney}
+          onReturnTitle={handleReturnToTitle}
         />
       )}
 
